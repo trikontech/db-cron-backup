@@ -5,15 +5,15 @@
 # 1. Run: crontab -e
 # 2. Paste the line below:
 #
-0 2 * * * /bin/bash -c "cd $(pwd) && ./backup.sh >> ./backups/cron.log 2>&1"
+30 10 * * * /bin/bash -c "cd $(pwd) && ./backup.sh >> ./backups/cron.log 2>&1"
 #
 # ==============================================================================
-# Schedule breakdown (0 2 * * *):
+# Schedule breakdown (30 10 * * * = 4:00 PM IST / 10:30 UTC):
 # ┌───────────── minute (0 - 59)
 # │ ┌───────────── hour (0 - 23)
 # │ │ ┌───────────── day of the month (1 - 31)
 # │ │ │ ┌───────────── month (1 - 12)
 # │ │ │ │ ┌───────────── day of the week (0 - 6) (Sunday to Saturday)
 # │ │ │ │ │
-# 0  2  *  *  * 
+# 30 10 * * * 
 # ==============================================================================
