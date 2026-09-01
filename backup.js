@@ -32,37 +32,7 @@ async function sendAlert(title, message) {
   }
 }
 
-async function uploadToGoogleDrive(filePath, filename) {
-  if (!fs.existsSync(SERVICE_ACCOUNT_KEY_FILE)) {
-    throw new Error(`Service account key file not found at ${SERVICE_ACCOUNT_KEY_FILE}. Please follow README to generate it.`);
-  }
-
-  const auth = new google.auth.GoogleAuth({
-    keyFile: SERVICE_ACCOUNT_KEY_FILE,
-    scopes: ['https://www.googleapis.com/auth/drive.file']
-  });
-
-  const drive = google.drive({ version: 'v3', auth });
-
-  console.log(`[GDRIVE] Uploading ${filename} to Google Drive folder: ${GDRIVE_FOLDER_ID}...`);
-
-  const media = {
-    mimeType: 'application/octet-stream',
-    body: fs.createReadStream(filePath)
-  };
-
-  const response = await drive.files.create({
-    requestBody: {
-      name: filename,
-      parents: GDRIVE_FOLDER_ID ? [GDRIVE_FOLDER_ID] : []
-    },
-    media: media,
-    fields: 'id, name, webViewLink, size'
-  });
-
-  console.log(`[GDRIVE] ✓ Upload complete! File ID: ${response.data.id}`);
-  return response.data;
-}
+import { uploadToGoogleDrive } from './uploader.js';
 
 export async function runBackup() {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -88,7 +58,7 @@ export async function runBackup() {
     console.log(`[PG_DUMP] ✓ Local dump completed: ${filename} (${sizeMb} MB in ${duration}s)`);
 
     // Upload to Google Drive
-    const driveFile = await uploadToGoogleDrive(localFilePath, filename);
+    const driveFile = await uploadToGoogleDrive(localFilePath, GDRIVE_FOLDER_ID, SERVICE_ACCOUNT_KEY_FILE);
 
     // Retention Cleanup
     console.log(`[CLEANUP] Pruning local backups older than ${RETENTION_DAYS_LOCAL} days...`);
