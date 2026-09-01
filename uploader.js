@@ -29,7 +29,7 @@ export async function uploadToGoogleDrive(filePath, folderId, serviceAccountKeyF
   
   const auth = new google.auth.GoogleAuth({
     keyFile: keyFile,
-    scopes: ['https://www.googleapis.com/auth/drive.file']
+    scopes: ['https://www.googleapis.com/auth/drive']
   });
 
   const drive = google.drive({ version: 'v3', auth });
@@ -41,21 +41,37 @@ export async function uploadToGoogleDrive(filePath, folderId, serviceAccountKeyF
     body: fs.createReadStream(filePath)
   };
 
-  const response = await drive.files.create({
-    requestBody: {
-      name: filename,
-      parents: targetFolderId ? [targetFolderId] : []
-    },
-    media: media,
-    fields: 'id, name, webViewLink, size'
-  });
+  try {
+    const response = await drive.files.create({
+      requestBody: {
+        name: filename,
+        parents: targetFolderId ? [targetFolderId] : []
+      },
+      media: media,
+      supportsAllDrives: true,
+      fields: 'id, name, webViewLink, size'
+    });
 
-  console.log(`[uploader] ✓ Successfully uploaded to Google Drive! File ID: ${response.data.id}`);
-  if (response.data.webViewLink) {
-    console.log(`[uploader] Link: ${response.data.webViewLink}`);
+    console.log(`[uploader] ✓ Successfully uploaded to Google Drive! File ID: ${response.data.id}`);
+    if (response.data.webViewLink) {
+      console.log(`[uploader] Link: ${response.data.webViewLink}`);
+    }
+
+    return response.data;
+  } catch (err) {
+    if (err.message && err.message.includes('File not found')) {
+      console.error(`\n[uploader] ❌ Google Drive Error: Folder ID "${targetFolderId}" was not found or is inaccessible.`);
+      console.error(`👉 Solution: Share your Google Drive folder with the Service Account email:`);
+      try {
+        const keyData = JSON.parse(fs.readFileSync(keyFile, 'utf8'));
+        if (keyData.client_email) {
+          console.error(`   Email: ${keyData.client_email}`);
+        }
+      } catch (e) {}
+      console.error(`   Give it "Editor" permissions in Google Drive.\n`);
+    }
+    throw err;
   }
-
-  return response.data;
 }
 
 // Run as CLI if invoked directly
