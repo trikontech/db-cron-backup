@@ -10,8 +10,16 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export async function uploadToGoogleDrive(filePath, folderId, serviceAccountKeyFile) {
-  const targetFolderId = folderId || process.env.GDRIVE_FOLDER_ID;
+  let targetFolderId = folderId || process.env.GDRIVE_FOLDER_ID;
   const keyFile = serviceAccountKeyFile || process.env.SERVICE_ACCOUNT_KEY_FILE || './service-account-key.json';
+
+  // Automatically extract ID if a full Google Drive URL was pasted
+  if (targetFolderId && targetFolderId.includes('/folders/')) {
+    const match = targetFolderId.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      targetFolderId = match[1];
+    }
+  }
 
   if (!filePath) {
     throw new Error('File path is required for Google Drive upload.');
