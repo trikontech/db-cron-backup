@@ -70,10 +70,16 @@ send_healthcheck() {
 log "================================================================="
 log "Starting Neon PostgreSQL Backup for project 'my-neon-project'"
 
-# 3. Check for pg_dump
-if ! command -v pg_dump &> /dev/null; then
-  log "ERROR: 'pg_dump' command not found! Please install postgresql-client."
-  send_webhook "🚨 FAILED" "'pg_dump' utility not found on host."
+# 3. Check for pg_dump or docker
+USE_DOCKER=false
+if command -v docker &> /dev/null; then
+  USE_DOCKER=true
+  log "Docker detected. Using 'postgres:latest' docker container for pg_dump (prevents version mismatch)."
+elif command -v pg_dump &> /dev/null; then
+  log "Using system 'pg_dump' utility..."
+else
+  log "ERROR: Neither 'docker' nor 'pg_dump' command was found! Please install postgresql-client or docker."
+  send_webhook "🚨 FAILED" "'pg_dump' and 'docker' utilities not found on host."
   send_healthcheck "fail"
   exit 1
 fi
@@ -82,7 +88,13 @@ fi
 log "Dumping database from Neon..."
 START_TIME=$(date +%s)
 
-pg_dump "$DATABASE_URL" -Fc --no-owner --no-acl -f "$LOCAL_FILEPATH"
+ABS_BACKUP_DIR="$(cd "$LOCAL_BACKUP_DIR" && pwd)"
+
+if [ "$USE_DOCKER" = true ]; then
+  docker run --rm -v "${ABS_BACKUP_DIR}:/backups" postgres:latest pg_dump "$DATABASE_URL" -Fc --no-owner --no-acl -f "/backups/${BACKUP_FILENAME}"
+else
+  pg_dump "$DATABASE_URL" -Fc --no-owner --no-acl -f "$LOCAL_FILEPATH"
+fi
 
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
