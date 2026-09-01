@@ -1,0 +1,22 @@
+# Environment & Secrets
+.env
+.env.local
+*.pem
+*.key
+
+# Node / Dependencies
+node_modules/
+npm-debug.log*
+
+# Backups / Dumps
+*.sql
+*.tar.gz
+*.gz
+backups/
+tmp/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
