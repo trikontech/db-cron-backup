@@ -1,0 +1,19 @@
+{
+  "name": "neon-to-gdrive-backup",
+  "version": "1.0.0",
+  "description": "Automated Neon PostgreSQL database backup to Google Drive with Cron jobs, Docker, and GitHub Actions",
+  "type": "module",
+  "scripts": {
+    "backup": "node backup.js",
+    "backup:bash": "./backup.sh",
+    "restore": "./restore.sh",
+    "verify": "./verify-backup.sh"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "googleapis": "^144.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

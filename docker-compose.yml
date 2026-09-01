@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  neon-backup:
+    build: .
+    container_name: neon-backup-my-neon-project
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - TZ=UTC
+      - DATABASE_URL=${DATABASE_URL}
+      - GDRIVE_FOLDER_ID=${GDRIVE_FOLDER_ID}
+      - RETENTION_DAYS_LOCAL=7
+    volumes:
+      # Persist local backups on the host machine
+      - ./backups:/app/backups
+      # Mount your Google Service Account key securely
+      - ./service-account-key.json:/app/service-account-key.json:ro

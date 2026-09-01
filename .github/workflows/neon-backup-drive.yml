@@ -1,0 +1,65 @@
+name: Daily Neon DB Backup to Google Drive
+
+on:
+  schedule:
+    # Runs automatically based on your configured cron schedule (0 2 * * *)
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub UI anytime
+
+jobs:
+  backup:
+    name: Neon DB Backup & Google Drive Upload
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL Client Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client curl
+
+      - name: Setup Node.js (for Google Drive API uploader)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Decode Google Service Account Key
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+        run: |
+          if [ -n "$GCP_SA_KEY" ]; then
+            echo "$GCP_SA_KEY" > service-account-key.json
+            chmod 600 service-account-key.json
+          else
+            echo "::error::Secret GCP_SERVICE_ACCOUNT_KEY is missing! Add it in GitHub Repo Settings -> Secrets & Variables."
+            exit 1
+          fi
+
+      - name: Run Backup & Upload to Drive
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+          LOCAL_BACKUP_DIR: './backups'
+          RETENTION_DAYS_LOCAL: '7'
+          WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+          SERVICE_ACCOUNT_KEY_FILE: './service-account-key.json'
+        run: |
+          chmod +x backup.sh
+          ./backup.sh
+
+      - name: Send Failure Alert (if backup crashed)
+        if: failure()
+        env:
+          WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+        run: |
+          if [ -n "$WEBHOOK_URL" ]; then
+            curl -s -X POST -H "Content-Type: application/json" \
+              -d '{"content":"🚨 **GitHub Actions Alert**: Neon DB backup failed for project `my-neon-project`! Check workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
+              "$WEBHOOK_URL" || true
+          fi
