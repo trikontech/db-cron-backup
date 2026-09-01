@@ -1,33 +1,34 @@
-name: Daily Neon DB Backup to Google Drive
+name: "Daily Neon DB Backup to Google Drive"
 
 on:
   schedule:
-    # Runs automatically based on your configured cron schedule (0 2 * * *)
     - cron: '0 2 * * *'
-  workflow_dispatch: # Allows manual trigger from GitHub UI anytime
+  workflow_dispatch:
 
 jobs:
-  backup:
+  backup-to-gdrive:
     name: Neon DB Backup & Google Drive Upload
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install PostgreSQL Client Tools
+      - name: Install Latest PostgreSQL Client Tools (v17/v18)
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql-client curl
+          sudo apt-get install -y wget gnupg lsb-release curl
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17 postgresql-client-common
 
-      - name: Setup Node.js (for Google Drive API uploader)
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: '22'
 
       - name: Install dependencies
-        run: npm ci || npm install
+        run: npm install --no-audit --no-fund
 
       - name: Decode Google Service Account Key
         env:
@@ -52,14 +53,3 @@ jobs:
         run: |
           chmod +x backup.sh
           ./backup.sh
-
-      - name: Send Failure Alert (if backup crashed)
-        if: failure()
-        env:
-          WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
-        run: |
-          if [ -n "$WEBHOOK_URL" ]; then
-            curl -s -X POST -H "Content-Type: application/json" \
-              -d '{"content":"🚨 **GitHub Actions Alert**: Neon DB backup failed for project `my-neon-project`! Check workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
-              "$WEBHOOK_URL" || true
-          fi
