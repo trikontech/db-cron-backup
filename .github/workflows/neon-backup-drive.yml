@@ -54,3 +54,11 @@ jobs:
         run: |
           chmod +x backup.sh
           ./backup.sh
+
+      - name: Save Backup to GitHub Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-db-backup-${{ github.run_id }}
+          path: ./backups/*.dump
+          retention-days: 30
